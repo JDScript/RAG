@@ -1,10 +1,15 @@
 from abc import ABC
+import base64
+from io import BytesIO
 from typing import Generic
 from typing import TypeVar
 import uuid
 
 from loguru import logger
+import PIL.Image
+from pydantic import UUID4
 from pydantic import BaseModel
+from pydantic import Field
 from pymongo import errors
 
 from rag.infrastructure.mongo import connection
@@ -12,10 +17,33 @@ from rag.settings import settings
 
 T = TypeVar("T", bound="MongoBaseDocument")
 
-_database = connection.get_database(settings.DATABASE_NAME)
+_database = connection.get_database(settings.MONGO_DATABASE_NAME)
 
 
 class MongoBaseDocument(BaseModel, Generic[T], ABC):
+    model_config = {"arbitrary_types_allowed": True}
+    id: UUID4 = Field(default_factory=uuid.uuid4)
+
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, self.__class__):
+            return False
+
+        return self.id == value.id
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    @staticmethod
+    def _is_base64_image(s: str) -> bool:
+        try:
+            decoded_data = base64.b64decode(s)
+            if len(decoded_data) < 8:
+                return False
+
+            return bool(decoded_data.startswith((b"\xff\xd8\xff", b"\x89PNG\r\n\x1a\n")))
+        except Exception:
+            return False
+
     @classmethod
     def from_mongo(cls: type[T], data: dict) -> T:
         """Convert "_id" (str object) into "id" (UUID object)."""
@@ -24,6 +52,10 @@ class MongoBaseDocument(BaseModel, Generic[T], ABC):
             raise ValueError("Data is empty.")
 
         id = data.pop("_id")
+
+        for key, value in data.items():
+            if isinstance(value, str) and cls._is_base64_image(value):
+                data[key] = PIL.Image.open(BytesIO(base64.b64decode(value)))
 
         return cls(**dict(data, id=id))
 
@@ -37,10 +69,6 @@ class MongoBaseDocument(BaseModel, Generic[T], ABC):
         if "_id" not in parsed and "id" in parsed:
             parsed["_id"] = str(parsed.pop("id"))
 
-        for key, value in parsed.items():
-            if isinstance(value, uuid.UUID):
-                parsed[key] = str(value)
-
         return parsed
 
     def model_dump(self: T, **kwargs) -> dict:
@@ -49,6 +77,10 @@ class MongoBaseDocument(BaseModel, Generic[T], ABC):
         for key, value in dict_.items():
             if isinstance(value, uuid.UUID):
                 dict_[key] = str(value)
+            if isinstance(value, PIL.Image.Image):
+                buffered = BytesIO()
+                value.save(buffered, format="PNG")
+                dict_[key] = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
         return dict_
 
@@ -121,4 +153,3 @@ class MongoBaseDocument(BaseModel, Generic[T], ABC):
             raise Exception("Document should define an Settings configuration class with the name of the collection.")
 
         return cls.Settings.name
-

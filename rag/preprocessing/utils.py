@@ -1,9 +1,6 @@
-from collections.abc import Generator
 import io
 
 import av
-import PIL
-import PIL.Image
 
 
 def time_str_to_ms(t: str) -> int:
@@ -12,7 +9,51 @@ def time_str_to_ms(t: str) -> int:
     return (int(h) * 3600 + int(m) * 60 + int(s)) * 1000 + int(ms)
 
 
-def extract_video_frames(mp4_bytes: bytes) -> Generator[PIL.Image.Image]:
+def clean_captions(captions: list):
+    cleaned_captions = []
+    for caption in captions:
+        if not cleaned_captions:
+            cleaned_captions.append(
+                {
+                    "start": caption["start"],
+                    "end": caption["end"],
+                    "start_ms": time_str_to_ms(caption["start"]),
+                    "end_ms": time_str_to_ms(caption["end"]),
+                    "text": caption["text"].strip(),
+                }
+            )
+            continue
+
+        last_caption = cleaned_captions[-1]
+
+        if caption["text"] == last_caption["text"]:
+            cleaned_captions[-1]["end"] = caption["end"]
+            cleaned_captions[-1]["end_ms"] = time_str_to_ms(caption["end"])
+        elif caption["text"].startswith(last_caption["text"]):
+            cleaned_captions.append(
+                {
+                    "start": caption["start"],
+                    "end": caption["end"],
+                    "start_ms": time_str_to_ms(caption["start"]),
+                    "end_ms": time_str_to_ms(caption["end"]),
+                    "text": caption["text"][len(last_caption["text"]) :].strip(),
+                }
+            )
+        else:
+            cleaned_captions.append(
+                {
+                    "start": caption["start"],
+                    "end": caption["end"],
+                    "start_ms": time_str_to_ms(caption["start"]),
+                    "end_ms": time_str_to_ms(caption["end"]),
+                    "text": caption["text"].strip(),
+                }
+            )
+
+    return cleaned_captions
+
+
+def extract_video_frames(mp4_bytes: bytes):
     container = av.open(io.BytesIO(mp4_bytes))
     yield {
         "fps": container.streams.video[0].average_rate,
@@ -21,5 +62,4 @@ def extract_video_frames(mp4_bytes: bytes) -> Generator[PIL.Image.Image]:
         "duration": container.duration,
         "frames": container.streams.video[0].frames,
     }
-    for frame in container.decode(video=0):
-        yield frame.to_image()
+    yield from container.decode(video=0)

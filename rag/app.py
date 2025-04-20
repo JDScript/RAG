@@ -1,2 +1,3 @@
-from rag.infrastructure.mongo import connection as mongo_connection
-from rag.infrastructure.qdrant import connection as qdrant_connection
+import gradio as gr
+
+gr.load_chat("http://localhost:11434/v1/", model="gemma3:4b", token="***").launch()
