@@ -1,4 +1,5 @@
 from abc import ABC
+from typing import TypeVar
 
 from pydantic import Field
 
@@ -6,8 +7,8 @@ from rag.domain.base.qdrant_document import QdrantBaseDocument
 
 from .types import DataCategory
 
-
-class EmbeddedChunk(QdrantBaseDocument, ABC):
+T = TypeVar("T", bound="EmbeddedChunk")
+class EmbeddedChunk(QdrantBaseDocument[T], ABC):
     content: str
     embedding: list[float] | None
     video_id: str
@@ -19,7 +20,7 @@ class EmbeddedChunk(QdrantBaseDocument, ABC):
     metadata: dict = Field(default_factory=dict)
 
 
-class EmbeddedVideoCaptionChunk(EmbeddedChunk):
+class EmbeddedVideoCaptionChunk(EmbeddedChunk["EmbeddedVideoCaptionChunk"]):
     start_ms: int
     end_ms: int
 

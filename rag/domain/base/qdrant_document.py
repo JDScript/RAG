@@ -45,7 +45,7 @@ class QdrantBaseDocument(BaseModel, Generic[T], ABC):
             "id": _id,
             **payload,
         }
-        if cls._has_class_attribute("embedding"):
+        if cls.has_class_attribute("embedding"):
             attributes["embedding"] = point.vector or None
 
         return cls(**attributes)
