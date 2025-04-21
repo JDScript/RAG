@@ -1,7 +1,6 @@
 import os
 
 import datasets
-from moviepy.editor import VideoFileClip
 
 # 加载数据集
 dataset = datasets.load_dataset("aegean-ai/ai-lectures-spring-24", split="train")
@@ -21,6 +20,9 @@ def get_video_clip(video_id: str, start_ms: int, end_ms: int):
     # 先将字节内容保存到临时文件
     temp_file = f"./temp/temp_{video_id}.mp4"
 
+    if os.path.exists(temp_file):
+        return temp_file
+
     # 确保temp目录存在
     os.makedirs("./temp", exist_ok=True)
 
@@ -28,25 +30,30 @@ def get_video_clip(video_id: str, start_ms: int, end_ms: int):
     with open(temp_file, "wb") as f:
         f.write(video_clip)
 
-    try:
-        # 现在用文件路径加载视频
-        with VideoFileClip(temp_file) as clip:
-            # 将毫秒转换为秒
-            start_time = start_ms / 1000
-            end_time = end_ms / 1000
+    return temp_file
 
-            # 从视频中提取子剪辑
-            subclip = clip.subclip(start_time, end_time)
+    # try:
+    #     # 现在用文件路径加载视频
+    #     with VideoFileClip(temp_file) as clip:
+    #         # 将毫秒转换为秒
+    #         start_time = int(start_ms / 1000)
+    #         end_time = int(end_ms / 1000)
+    #         subclip_filename = f"./temp/{video_id}_clip_{start_ms}-{end_ms}.mp4"
+    #         if os.path.exists(subclip_filename):
+    #             return subclip_filename
 
-            # 保存提取的子剪辑
-            subclip_filename = f"./temp/{video_id}_clip_{start_ms}-{end_ms}.mp4"
-            subclip.write_videofile(subclip_filename, codec="libx264")
 
-            # 确保子剪辑也被关闭
-            subclip.close()
+    #         # 从视频中提取子剪辑
+    #         subclip = clip.subclip(max(0, start_time), min(end_time, clip.duration))
 
-            return subclip_filename
-    finally:
-        # 清理临时文件
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
+    #         # 保存提取的子剪辑
+    #         subclip.write_videofile(subclip_filename, codec="libx264")
+
+    #         # 确保子剪辑也被关闭
+    #         subclip.close()
+
+    #         return subclip_filename
+    # finally:
+    #     # 清理临时文件
+    #     if os.path.exists(temp_file):
+    #         os.remove(temp_file)

@@ -14,9 +14,12 @@ class ContextRetriever:
         """
         emb = BGEEmbedding().embed_text(query)
         img_emb = Siglip2Embedding().embed_text(query)
-        caption_chunks = EmbeddedVideoCaptionChunk.search(emb, limit=10)
+        caption_chunks = EmbeddedVideoCaptionChunk.search(
+            emb,
+            limit=5,
+        )
         # Rerank the caption chunks
-        rerank_mapping = Reranker().re_rank(query, [chunk.video_title + chunk.content for chunk in caption_chunks])
+        rerank_mapping = Reranker().re_rank(query, [chunk.content for chunk in caption_chunks])
         caption_chunks = [caption_chunks[i] for i in rerank_mapping]
         highest_mention_video_id = caption_chunks[0].video_id
 
@@ -25,39 +28,13 @@ class ContextRetriever:
         )
 
         merged_caption_chunks: list[EmbeddedVideoCaptionChunk] = []
-        merged = False
+        caption_chunks.sort(key=lambda x: x.start_ms)
 
-        while False:
-            for chunk in caption_chunks:
-                if not merged_caption_chunks:
-                    merged_caption_chunks.append(chunk)
-                else:
-                    last_chunk = merged_caption_chunks[-1]
+        for chunk in caption_chunks:
+            if merged_caption_chunks:
+                merged_caption_chunks[-1].content += "\n" + chunk.content
+                merged_caption_chunks[-1].end_ms = chunk.end_ms
+            else:
+                merged_caption_chunks.append(chunk)
 
-                    # Case 1: If current chunk can merge with last chunk (10 seconds tolerance)
-                    if chunk.start_ms <= last_chunk.end_ms + 10000:  # 10秒容忍度
-                        last_chunk.end_ms = max(last_chunk.end_ms, chunk.end_ms)
-                        last_chunk.content += f" {chunk.content}"
-                        merged = True
-                        break
-
-                    # Case 2: If current chunk can merge by prepending to the last chunk (end_ms - 10 seconds tolerance)
-                    if chunk.end_ms >= last_chunk.start_ms - 10000:
-                        last_chunk.start_ms = min(last_chunk.start_ms, chunk.start_ms)
-                        last_chunk.content = f"{chunk.content} {last_chunk.content}"
-                        merged = True
-                        break
-
-                    # If no merge, just append the chunk
-                    merged_caption_chunks.append(chunk)
-
-            # If no merges occurred, exit the loop
-            if not merged:
-                break
-            # Reset merged flag for the next iteration
-            merged = False
-            caption_chunks = merged_caption_chunks
-            merged_caption_chunks = []
-
-        print("Merged caption chunks:", len(caption_chunks))
         return caption_chunks, image_chunks

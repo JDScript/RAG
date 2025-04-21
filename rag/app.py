@@ -4,6 +4,7 @@ import sys
 
 import gradio as gr
 import ollama
+from ollama import Image
 from ollama import Message
 
 sys.path.append(str(Path()))
@@ -64,12 +65,13 @@ class ChatbotInstance:
         caption_context, image_context = retriever.retrieve_context(self.history[-1]["content"])
 
         self.history[-1].content = "\n\n".join([chunk.to_context() for chunk in caption_context])
+        self.history[-1].images = [Image(value=chunk.to_context()) for chunk in image_context]
         yield self.to_gradio_chat_message()
 
         self.history.append(ChatMessage(role="assistant", content=""))
         response = ollama_client.chat(
             model=self.model,
-            messages=self.history,
+            messages=self.history[:-1],
             stream=True,
         )
 
@@ -93,7 +95,7 @@ class ChatbotInstance:
         video_clip_path = get_video_clip(video_id, start_ms, end_ms)
         self.history[
             -1
-        ].content = f"<video src='/gradio_api/file={video_clip_path}' controls width='640' height='360'></video>"
+        ].content = f"<video src='/gradio_api/file={video_clip_path}#t={start_ms//1000},{end_ms//1000}' controls width='640' height='360'></video>"
         yield self.to_gradio_chat_message()
 
 
@@ -107,7 +109,7 @@ def chat(state: ChatbotInstance):
 
 def get_chatbot_instance():
     return ChatbotInstance(
-        system="You are a helpful assistant. Please respond to user's question according to the video context.",
+        system="You are a helpful assistant. Please respond to user's question according to the video context, be clear and concise, try to elaborate more.",
         model=settings.VLM_MODEL,
     )
 
