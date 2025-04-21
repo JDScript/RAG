@@ -70,7 +70,7 @@ for doc in tqdm(docs, desc="Processing video documents"):
     merged_sentences = []
     current_sentence = ""
     for sentence in sentences:
-        if len(current_sentence.split()) + len(sentence.split()) < 250:
+        if len(current_sentence.split()) + len(sentence.split()) < 250 or len(sentence.split()) < 10:
             current_sentence += " " + sentence
         else:
             merged_sentences.append(current_sentence.strip())

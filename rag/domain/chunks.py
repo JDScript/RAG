@@ -4,6 +4,7 @@ from typing import TypeVar
 from pydantic import Field
 
 from rag.domain.base.qdrant_document import QdrantBaseDocument
+from rag.domain.documents import VideoFrameDocument
 
 from .types import DataCategory
 
@@ -21,6 +22,9 @@ class EmbeddedChunk(QdrantBaseDocument[T], ABC):
     video_total_frames: int
     metadata: dict = Field(default_factory=dict)
 
+    def to_context(self) -> str | bytes:
+        return self.content
+
 
 class EmbeddedVideoCaptionChunk(EmbeddedChunk["EmbeddedVideoCaptionChunk"]):
     start_ms: int
@@ -28,10 +32,15 @@ class EmbeddedVideoCaptionChunk(EmbeddedChunk["EmbeddedVideoCaptionChunk"]):
 
     class Config:
         name = DataCategory.VIDEO
-        embedding_size = 768
+        embedding_size = 1024
+
+    def to_context(self) -> str:
+        start = self.start_ms / 1000
+        end = self.end_ms / 1000
+        return f"Video: {self.video_title}\nTime: {start:.2f}s - {end:.2f}s\nCaption: {self.content}"
 
 
-class EmbeddedVideoFrameChunk(EmbeddedChunk):
+class EmbeddedVideoFrameChunk(EmbeddedChunk["EmbeddedVideoFrameChunk"]):
     frame_index: int
     frame_timestamp: int
     frame_id: str
@@ -39,3 +48,6 @@ class EmbeddedVideoFrameChunk(EmbeddedChunk):
     class Config:
         name = DataCategory.VIDEO_FRAME
         embedding_size = 1152
+
+    def to_context(self) -> bytes:
+        return VideoFrameDocument.find(_id=self.frame_id).frame_image.tobytes()

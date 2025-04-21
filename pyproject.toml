@@ -15,6 +15,7 @@ dependencies = [
     "langchain-experimental>=0.3.4",
     "llama-index>=0.12.31",
     "loguru>=0.7.3",
+    "moviepy>=1.0.3",
     "ollama>=0.4.8",
     "pillow>=11.2.1",
     "pydantic-ai>=0.1.0",
