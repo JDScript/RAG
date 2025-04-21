@@ -2995,6 +2995,7 @@ dependencies = [
 dev = [
     { name = "ipykernel" },
     { name = "pip" },
+    { name = "rag" },
     { name = "ruff" },
 ]
 
@@ -3026,6 +3027,7 @@ requires-dist = [
 dev = [
     { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "pip", specifier = ">=25.0.1" },
+    { name = "rag", virtual = "." },
     { name = "ruff", specifier = ">=0.11.5" },
 ]
 

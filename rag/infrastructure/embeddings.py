@@ -38,7 +38,7 @@ class Siglip2Embedding:
         """
         inputs = self.processor(images=[image], return_tensors="pt").to(self.model.device)
         with torch.no_grad():
-            return self.model.get_image_features(**inputs)
+            return self.model.get_image_features(**inputs).tolist()[0]
 
     def embed_text(self, text):
         """
@@ -52,7 +52,7 @@ class Siglip2Embedding:
         """
         inputs = self.processor(text=[text], return_tensors="pt").to(self.model.device)
         with torch.no_grad():
-            return self.model.get_text_features(**inputs)
+            return self.model.get_text_features(**inputs).tolist()[0]
 
     @property
     def embedding_size(self):
@@ -79,7 +79,7 @@ class BGEEmbedding:
 
     def __init__(
         self,
-        model_id: str = "BAAI/bge-small-en-v1.5",
+        model_id: str = "BAAI/bge-base-en-v1.5",
     ):
         self.model = SentenceTransformer(model_id)
 

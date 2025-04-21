@@ -6,8 +6,11 @@ import spacy
 from tqdm import tqdm
 
 from ..domain.chunks import EmbeddedVideoCaptionChunk
+from ..domain.chunks import EmbeddedVideoFrameChunk
 from ..domain.documents import VideoDocument
+from ..domain.documents import VideoFrameDocument
 from ..infrastructure.embeddings import BGEEmbedding
+from ..infrastructure.embeddings import Siglip2Embedding
 
 punctuation_model = PunctuationModel()
 spacy_sentence_split = spacy.load("en_core_web_lg")
@@ -59,7 +62,22 @@ for doc in tqdm(docs, desc="Processing video documents"):
     doc.merged_caption = punctuation_model.restore_punctuation(doc.merged_caption)
 
     # Split into sentences, then remove punctuation to match raw captions
-    sentences = [re.sub(r"[.,;:!?-]", "", sent.text.strip()) for sent in spacy_sentence_split(doc.merged_caption).sents]
+    sentences = [
+        re.sub(r"[.,;:!?-]", "", sent.text.strip()) for sent in spacy_sentence_split(doc.merged_caption).sents
+    ]
+
+    # Merge sentences that are too short
+    merged_sentences = []
+    current_sentence = ""
+    for sentence in sentences:
+        if len(current_sentence.split()) + len(sentence.split()) < 250:
+            current_sentence += " " + sentence
+        else:
+            merged_sentences.append(current_sentence.strip())
+            current_sentence = sentence
+    if current_sentence:
+        merged_sentences.append(current_sentence.strip())
+    sentences = merged_sentences
 
     # Build a word-level timeline from the original captions
     word_timeline = build_word_timeline(captions)
@@ -100,3 +118,26 @@ for doc in tqdm(docs, desc="Processing video documents"):
         )
         embedded_chunks.append(embedded_chunk)
     EmbeddedVideoCaptionChunk.bulk_insert(embedded_chunks)
+
+
+for doc in tqdm(docs, desc="Updating video frames documents"):
+    frame_ids = doc.frame_ids
+    embedded_chunks = []
+    for frame_id in tqdm(frame_ids, desc="Creating frame chunks"):
+        frame_doc: VideoFrameDocument = VideoFrameDocument.find(_id=frame_id)
+        if frame_doc:
+            embedded_chunk = EmbeddedVideoFrameChunk(
+                content="",
+                video_id=doc.video_id,
+                video_title=doc.video_title,
+                video_height=doc.video_height,
+                video_width=doc.video_width,
+                video_fps=doc.video_fps,
+                video_total_frames=doc.video_total_frames,
+                frame_id=str(frame_doc.id),
+                frame_index=frame_doc.frame_index,
+                frame_timestamp=frame_doc.frame_timestamp,
+                embedding=Siglip2Embedding().embed_image(frame_doc.frame_image),
+            )
+            embedded_chunks.append(embedded_chunk)
+    EmbeddedVideoFrameChunk.bulk_insert(embedded_chunks)

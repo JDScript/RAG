@@ -8,6 +8,8 @@ from rag.domain.base.qdrant_document import QdrantBaseDocument
 from .types import DataCategory
 
 T = TypeVar("T", bound="EmbeddedChunk")
+
+
 class EmbeddedChunk(QdrantBaseDocument[T], ABC):
     content: str
     embedding: list[float] | None
@@ -26,12 +28,13 @@ class EmbeddedVideoCaptionChunk(EmbeddedChunk["EmbeddedVideoCaptionChunk"]):
 
     class Config:
         name = DataCategory.VIDEO
-        embedding_size = 384
+        embedding_size = 768
 
 
 class EmbeddedVideoFrameChunk(EmbeddedChunk):
     frame_index: int
     frame_timestamp: int
+    frame_id: str
 
     class Config:
         name = DataCategory.VIDEO_FRAME

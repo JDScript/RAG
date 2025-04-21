@@ -8,5 +8,6 @@ class Settings(BaseSettings):
     QDRANT_DATABASE_HOST: str = "localhost"
     QDRANT_DATABASE_PORT: int = 6333
 
+    VLM_MODEL: str = "gemma3:4b"
 
 settings = Settings()
