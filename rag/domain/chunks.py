@@ -32,7 +32,7 @@ class EmbeddedVideoCaptionChunk(EmbeddedChunk["EmbeddedVideoCaptionChunk"]):
 
     class Config:
         name = DataCategory.VIDEO
-        embedding_size = 1024
+        embedding_size = 768
 
     def to_context(self) -> str:
         start = self.start_ms / 1000
